@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import messagebox
-import tkinter.font as tkfont
 
 class CheckersGame:
     def __init__(self, master):
@@ -10,6 +9,8 @@ class CheckersGame:
         self.selected_piece = None
         self.turn = "red"
         self.multi_capture_piece = None
+        self.square_size = 60
+        self.piece_margin = 5
         self.init_board()
         self.create_board_gui()
 
@@ -26,35 +27,46 @@ class CheckersGame:
         ]
 
     def create_board_gui(self):
-        self.buttons = []
-        bold_font = tkfont.Font(weight="bold")
-        for i in range(8):
-            row = []
-            for j in range(8):
-                button = tk.Button(self.master, width=5, height=2, command=lambda x=i, y=j: self.on_click(x, y))
-                button.grid(row=i, column=j)
-                row.append(button)
-            self.buttons.append(row)
-        self.update_board_gui()
+        self.canvas = tk.Canvas(self.master, width=self.square_size*8, height=self.square_size*8)
+        self.canvas.pack()
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.draw_board()
+        self.draw_pieces()
 
-    def update_board_gui(self):
-        for i in range(8):
-            for j in range(8):
-                if (i + j) % 2 == 0:
-                    self.buttons[i][j].config(bg="white")
-                else:
-                    self.buttons[i][j].config(bg="black")
-                
-                if self.board[i][j] == 1:
-                    self.buttons[i][j].config(text="R", fg="red")
-                elif self.board[i][j] == 2:
-                    self.buttons[i][j].config(text="B", fg="blue")
-                elif self.board[i][j] == 3:  # Red King
-                    self.buttons[i][j].config(text="R", fg="red", font=tkfont.Font(weight="bold"))
-                elif self.board[i][j] == 4:  # Black King
-                    self.buttons[i][j].config(text="B", fg="blue", font=tkfont.Font(weight="bold"))
-                else:
-                    self.buttons[i][j].config(text="")
+    def draw_board(self):
+        for row in range(8):
+            for col in range(8):
+                x1 = col * self.square_size
+                y1 = row * self.square_size
+                x2 = x1 + self.square_size
+                y2 = y1 + self.square_size
+                color = "tan" if (row + col) % 2 == 0 else "brown"
+                self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+
+    def draw_pieces(self):
+        self.canvas.delete("piece")
+        for row in range(8):
+            for col in range(8):
+                x = col * self.square_size + self.square_size // 2
+                y = row * self.square_size + self.square_size // 2
+                piece = self.board[row][col]
+                if piece != 0:
+                    color = "red" if piece in [1, 3] else "white"
+                    outline_color = "white" if piece in [1, 3] else "black"
+                    self.canvas.create_oval(
+                        x - self.square_size//2 + self.piece_margin,
+                        y - self.square_size//2 + self.piece_margin,
+                        x + self.square_size//2 - self.piece_margin,
+                        y + self.square_size//2 - self.piece_margin,
+                        fill=color, outline=outline_color, width=2, tags="piece"
+                    )
+                    if piece in [3, 4]:  # King
+                        self.canvas.create_text(x, y, text="K", fill=outline_color, font=("Arial", 24, "bold"), tags="piece")
+
+    def on_canvas_click(self, event):
+        col = event.x // self.square_size
+        row = event.y // self.square_size
+        self.on_click(row, col)
 
     def on_click(self, row, col):
         if self.selected_piece:
@@ -63,7 +75,7 @@ class CheckersGame:
                 if not self.multi_capture_piece:
                     self.turn = "black" if self.turn == "red" else "red"
                 self.selected_piece = None
-                self.update_board_gui()
+                self.draw_pieces()
                 if self.check_winner():
                     messagebox.showinfo("Game Over", f"{self.turn.capitalize()} wins!")
                     self.master.quit()
