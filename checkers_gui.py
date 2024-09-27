@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+import random
 
 class CheckersGame:
     def __init__(self, master):
@@ -11,8 +12,34 @@ class CheckersGame:
         self.multi_capture_piece = None
         self.square_size = 60
         self.piece_margin = 5
+        self.ai_mode = False
+        self.create_menu()
         self.init_board()
         self.create_board_gui()
+
+    def create_menu(self):
+        menubar = tk.Menu(self.master)
+        self.master.config(menu=menubar)
+
+        game_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Game", menu=game_menu)
+        game_menu.add_command(label="New Game", command=self.new_game)
+        game_menu.add_command(label="Play vs AI", command=self.start_ai_game)
+        game_menu.add_separator()
+        game_menu.add_command(label="Quit", command=self.master.quit)
+
+    def new_game(self):
+        self.ai_mode = False
+        self.init_board()
+        self.turn = "red"
+        self.selected_piece = None
+        self.multi_capture_piece = None
+        self.draw_pieces()
+
+    def start_ai_game(self):
+        self.new_game()
+        self.ai_mode = True
+        messagebox.showinfo("AI Game", "You are playing as Red. \nThe AI will play as White.")
 
     def init_board(self):
         self.board = [
@@ -64,6 +91,8 @@ class CheckersGame:
                         self.canvas.create_text(x, y, text="K", fill=outline_color, font=("Arial", 24, "bold"), tags="piece")
 
     def on_canvas_click(self, event):
+        if self.ai_mode and self.turn == "black":
+            return  # Prevent player from moving during AI's turn
         col = event.x // self.square_size
         row = event.y // self.square_size
         self.on_click(row, col)
@@ -74,11 +103,13 @@ class CheckersGame:
                 self.move_piece(self.selected_piece[0], self.selected_piece[1], row, col)
                 if not self.multi_capture_piece:
                     self.turn = "black" if self.turn == "red" else "red"
+                    if self.ai_mode and self.turn == "black":
+                        self.master.after(500, self.ai_move)  # Delay AI move for better visualization
                 self.selected_piece = None
                 self.draw_pieces()
                 if self.check_winner():
                     messagebox.showinfo("Game Over", f"{self.turn.capitalize()} wins!")
-                    self.master.quit()
+                    self.new_game()
             else:
                 self.selected_piece = None
                 self.multi_capture_piece = None
@@ -151,6 +182,29 @@ class CheckersGame:
         red_pieces = sum(row.count(1) + row.count(3) for row in self.board)
         black_pieces = sum(row.count(2) + row.count(4) for row in self.board)
         return red_pieces == 0 or black_pieces == 0
+
+    def ai_move(self):
+        valid_moves = self.get_all_valid_moves("black")
+        if valid_moves:
+            start, end = random.choice(valid_moves)
+            self.move_piece(start[0], start[1], end[0], end[1])
+            self.turn = "red"
+            self.draw_pieces()
+            if self.check_winner():
+                messagebox.showinfo("Game Over", "White (AI) wins!")
+                self.new_game()
+
+    def get_all_valid_moves(self, color):
+        moves = []
+        for row in range(8):
+            for col in range(8):
+                if (color == "red" and self.board[row][col] in [1, 3]) or \
+                   (color == "black" and self.board[row][col] in [2, 4]):
+                    for end_row in range(8):
+                        for end_col in range(8):
+                            if self.is_valid_move(row, col, end_row, end_col):
+                                moves.append(((row, col), (end_row, end_col)))
+        return moves
 
 if __name__ == "__main__":
     root = tk.Tk()
