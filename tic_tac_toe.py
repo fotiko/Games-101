@@ -1,33 +1,38 @@
 import tkinter as tk
-from tkinter import messagebox, StringVar, OptionMenu
+from tkinter import messagebox
 import random
+
 
 class TicTacToe:
     def __init__(self, root):
         self.root = root
         self.root.title("Tic-Tac-Toe")
+        self.root.configure(bg="#333333")  # Set a dark background color for the main window
 
         # Initialize game state
         self.board = [' ' for _ in range(9)]
         self.current_player = "X"  # Player is "X", AI is "O"
         self.game_over = False
         self.buttons = []
-        self.difficulty = StringVar(root)
-        self.difficulty.set("Easy")  # Default difficulty level
-
-        # Create difficulty dropdown
-        difficulty_menu = OptionMenu(root, self.difficulty, "Easy", "Medium", "Hard")
-        difficulty_menu.grid(row=0, column=0, columnspan=3, sticky="nsew")
 
         # Create the game board (3x3 grid of buttons)
         for i in range(9):
-            button = tk.Button(root, text=' ', font=('normal', 20), width=5, height=2, command=lambda i=i: self.on_click(i))
-            button.grid(row=(i // 3) + 1, column=i % 3)
+            button = tk.Button(
+                root, 
+                text=' ', 
+                font=('normal', 20), 
+                width=5, 
+                height=2, 
+                bg='#444444',   # Dark background for buttons
+                fg='yellow',    # Yellow text for player marks
+                command=lambda i=i: self.on_click(i)
+            )
+            button.grid(row=i // 3, column=i % 3, padx=5, pady=5)
             self.buttons.append(button)
 
         # Create reset button
-        reset_button = tk.Button(root, text="Reset", command=self.reset_game)
-        reset_button.grid(row=4, column=0, columnspan=3, sticky="nsew")
+        reset_button = tk.Button(root, text="Reset", command=self.reset_game, bg='#555555', fg='white')  # Reset button with dark theme
+        reset_button.grid(row=3, column=0, columnspan=3, sticky="nsew")
 
     def on_click(self, index):
         if self.board[index] == ' ' and not self.game_over:
@@ -53,74 +58,45 @@ class TicTacToe:
             self.current_player = 'O' if self.current_player == 'X' else 'X'
 
     def ai_move(self):
-        difficulty = self.difficulty.get()
-
-        if difficulty == "Easy":
-            self.ai_easy()
-        elif difficulty == "Medium":
-            self.ai_medium()
-        elif difficulty == "Hard":
-            self.ai_hard()
-
-    def ai_easy(self):
-        available_moves = [i for i, spot in enumerate(self.board) if spot == ' ']
-        if available_moves:
-            move = random.choice(available_moves)
-            self.make_move(move, 'O')
-
-    def ai_medium(self):
-        # Block the player's winning move if possible
-        for move in range(9):
-            if self.board[move] == ' ':
-                self.board[move] = 'X'
-                if self.check_winner('X'):
-                    self.board[move] = 'O'
-                    self.buttons[move].config(text='O')
-                    return
-                self.board[move] = ' '
-
-        # Otherwise make a random move (same as easy)
-        self.ai_easy()
-
-    def ai_hard(self):
-        # Minimax algorithm for optimal play
-        best_score = float('-inf')
+        # Minimax algorithm to choose the best move
+        best_score = -float('inf')
         best_move = None
-        for move in range(9):
-            if self.board[move] == ' ':
-                self.board[move] = 'O'
+        for i in range(9):
+            if self.board[i] == ' ':
+                self.board[i] = 'O'
                 score = self.minimax(False)
-                self.board[move] = ' '
+                self.board[i] = ' '
                 if score > best_score:
                     best_score = score
-                    best_move = move
-
+                    best_move = i
         if best_move is not None:
             self.make_move(best_move, 'O')
 
     def minimax(self, is_maximizing):
-        winner = self.check_winner('O') or self.check_winner('X')
-        if winner:
-            return 1 if winner == 'O' else -1
-        elif ' ' not in self.board:  # Draw
+        # Check for terminal states
+        if self.check_winner('O'):
+            return 1
+        elif self.check_winner('X'):
+            return -1
+        elif ' ' not in self.board:
             return 0
 
         if is_maximizing:
-            best_score = float('-inf')
-            for move in range(9):
-                if self.board[move] == ' ':
-                    self.board[move] = 'O'
+            best_score = -float('inf')
+            for i in range(9):
+                if self.board[i] == ' ':
+                    self.board[i] = 'O'
                     score = self.minimax(False)
-                    self.board[move] = ' '
+                    self.board[i] = ' '
                     best_score = max(score, best_score)
             return best_score
         else:
             best_score = float('inf')
-            for move in range(9):
-                if self.board[move] == ' ':
-                    self.board[move] = 'X'
+            for i in range(9):
+                if self.board[i] == ' ':
+                    self.board[i] = 'X'
                     score = self.minimax(True)
-                    self.board[move] = ' '
+                    self.board[i] = ' '
                     best_score = min(score, best_score)
             return best_score
 
@@ -132,8 +108,8 @@ class TicTacToe:
         ]
         for combination in win_combinations:
             if all(self.board[i] == player for i in combination):
-                return player
-        return None
+                return True
+        return False
 
     def reset_game(self):
         self.board = [' ' for _ in range(9)]
@@ -141,6 +117,7 @@ class TicTacToe:
         self.game_over = False
         for button in self.buttons:
             button.config(text=' ')
+
 
 if __name__ == "__main__":
     root = tk.Tk()
